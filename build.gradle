@@ -25,6 +25,7 @@ apply plugin: 'war'
 apply plugin: 'io.spring.dependency-management'
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
