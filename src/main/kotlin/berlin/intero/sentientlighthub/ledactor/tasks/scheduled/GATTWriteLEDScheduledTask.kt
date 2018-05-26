@@ -2,8 +2,10 @@ package berlin.intero.sentientlighthub.ledactor.tasks.scheduled
 
 import berlin.intero.sentientlighthub.common.SentientProperties
 import berlin.intero.sentientlighthub.common.services.ConfigurationService
+import berlin.intero.sentientlighthub.common.services.TinybService
 import berlin.intero.sentientlighthub.common.tasks.GATTWriteAsyncTask
 import berlin.intero.sentientlighthub.common.tasks.MQTTSubscribeAsyncTask
+import com.google.gson.Gson
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
@@ -49,6 +51,16 @@ class GATTWriteLEDScheduledTask {
     @Scheduled(fixedDelay = SentientProperties.Frequency.SENTIENT_MAPPING_DELAY)
     fun map() {
         log.info("${SentientProperties.Color.TASK}-- GATT WRITE LED TASK${SentientProperties.Color.RESET}")
+
+        val scannedDevices = TinybService.scannedDevices
+        val intendedDevices = ConfigurationService.actorConfig?.actorDevices
+
+        log.fine("Show scannedDevices ${Gson().toJson(scannedDevices.map { d -> d.address })}")
+        log.fine("Show intendedDevices ${Gson().toJson(intendedDevices?.map { d -> d.address })}")
+
+        if (scannedDevices.isEmpty()) {
+            GATTScanDevicesScheduledTask().scanDevices()
+        }
 
         values.forEach { topic, value ->
 
