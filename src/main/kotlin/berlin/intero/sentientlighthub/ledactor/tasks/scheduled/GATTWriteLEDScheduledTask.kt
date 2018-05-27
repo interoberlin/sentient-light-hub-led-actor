@@ -10,6 +10,7 @@ import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.springframework.core.task.SimpleAsyncTaskExecutor
+import org.springframework.core.task.SyncTaskExecutor
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.util.logging.Logger
@@ -22,6 +23,7 @@ import java.util.logging.Logger
 @Component
 class GATTWriteLEDScheduledTask {
     val values: MutableMap<String, String> = HashMap()
+    val valuesHistoric: MutableMap<String, String> = HashMap()
 
     companion object {
         private val log: Logger = Logger.getLogger(GATTWriteLEDScheduledTask::class.simpleName)
@@ -48,8 +50,9 @@ class GATTWriteLEDScheduledTask {
         SimpleAsyncTaskExecutor().execute(MQTTSubscribeAsyncTask(topic, callback))
     }
 
-    @Scheduled(fixedDelay = SentientProperties.Frequency.SENTIENT_MAPPING_DELAY)
-    fun map() {
+    @Scheduled(fixedDelay = SentientProperties.Frequency.SENTIENT_WRITE_DELAY)
+    @SuppressWarnings("unused")
+    fun write() {
         log.info("${SentientProperties.Color.TASK}-- GATT WRITE LED TASK${SentientProperties.Color.RESET}")
 
         val scannedDevices = TinybService.scannedDevices
@@ -71,7 +74,8 @@ class GATTWriteLEDScheduledTask {
 
             log.info("${SentientProperties.Color.VALUE}topic $topic / val $value / strip $stripID / ledID $ledID / actor ${actor?.address} ${SentientProperties.Color.RESET}")
 
-            if (actor != null) {
+
+            if (actor != null && value != valuesHistoric[topic]) {
                 val address = actor.address
                 val characteristicID = SentientProperties.GATT.Characteristic.LED
 
@@ -83,8 +87,10 @@ class GATTWriteLEDScheduledTask {
                 }
 
                 // Call GATTWriteAsyncTask
-                SimpleAsyncTaskExecutor().execute(GATTWriteAsyncTask(address, characteristicID, byteValue))
+                SyncTaskExecutor().execute(GATTWriteAsyncTask(address, characteristicID, byteValue))
             }
+
+            valuesHistoric[topic] = value
         }
     }
 }
